@@ -128,14 +128,47 @@ def calculate_plant(plant_type, capacity, solar, wind, grid_score, land_cost):
         'Land Required': f"{capacity * land_per_mw:.1f} acres"
     }
 
-# Map creation - FIXED with proper tile sources that don't require attribution
+# Map creation - 3 DISTINCT WORKING MAP STYLES
 st.subheader("🗺️ Click anywhere on the map")
 
-# Map style selector - Using only map types that work without attribution issues
-map_style = st.radio("Map Style", ["Standard", "OpenStreetMap"], horizontal=True)
+# Map style selector - 3 different working map styles
+map_style = st.radio(
+    "Map Style", 
+    ["🗺️ Street Map", "🌄 Terrain Map", "🛰️ Satellite Map"], 
+    horizontal=True
+)
 
-# Create map - Simple OpenStreetMap (always works)
-m = folium.Map(location=[22.5, 78.5], zoom_start=5, control_scale=True)
+# Create different maps based on selection
+if map_style == "🗺️ Street Map":
+    # Standard OpenStreetMap - clear roads and labels
+    m = folium.Map(location=[22.5, 78.5], zoom_start=5, control_scale=True)
+    
+elif map_style == "🌄 Terrain Map":
+    # Terrain map - shows elevation, hills, mountains
+    m = folium.Map(
+        location=[22.5, 78.5], 
+        zoom_start=5,
+        tiles='https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+        attr='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+    )
+    
+else:  # Satellite Map
+    # Satellite imagery with labels overlay
+    m = folium.Map(
+        location=[22.5, 78.5], 
+        zoom_start=5,
+        tiles='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        attr='Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+    )
+    
+    # Add labels overlay for satellite map
+    labels = folium.TileLayer(
+        tiles='https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}.png',
+        attr='&copy; OpenStreetMap',
+        name='Labels',
+        overlay=True
+    )
+    labels.add_to(m)
 
 # Add markers
 for idx, row in india_data.iterrows():
@@ -171,6 +204,10 @@ folium.Marker(
     icon=folium.Icon(color='blue', icon='info-sign')
 ).add_to(m)
 
+# Add layer control for satellite map
+if map_style == "🛰️ Satellite Map":
+    folium.LayerControl().add_to(m)
+
 # Display map
 col1, col2 = st.columns([2, 1])
 
@@ -187,6 +224,14 @@ with col2:
     st.markdown(f"**Capacity:** {capacity_mw} MW")
     st.markdown(f"**Carbon Credits:** {'✅ On' if include_carbon else '❌ Off'}")
     st.markdown(f"**Electricity Price:** ${electricity_price}/kWh")
+    st.markdown("---")
+    st.markdown("### 🗺️ Current Map")
+    if map_style == "🗺️ Street Map":
+        st.markdown("*Street view with roads and labels*")
+    elif map_style == "🌄 Terrain Map":
+        st.markdown("*Terrain view showing mountains and elevation*")
+    else:
+        st.markdown("*Real satellite imagery from space*")
 
 # Location selection
 st.markdown("---")
@@ -316,8 +361,6 @@ if selected_row is not None:
             | **Payback** | {best['Payback Period']} |
             | **CO2 Saved** | {best['CO2 Saved/year']} |
             | **Capital Cost** | {best['Capital Cost (INR)']} |
-            
-            This is an excellent investment opportunity with strong returns.
             """)
         elif max(roi_values) > 50:
             st.info(f"""
@@ -329,8 +372,6 @@ if selected_row is not None:
             | **ROI** | {best['ROI (25 years)']} |
             | **Payback** | {best['Payback Period']} |
             | **CO2 Saved** | {best['CO2 Saved/year']} |
-            
-            This project offers good returns. Consider government incentives.
             """)
         else:
             st.warning(f"""
@@ -341,8 +382,6 @@ if selected_row is not None:
             | **Location** | {best['Location']} |
             | **ROI** | {best['ROI (25 years)']} |
             | **Payback** | {best['Payback Period']} |
-            
-            Returns are below target. Consider alternative locations or technologies.
             """)
         
         # Download report
@@ -358,7 +397,7 @@ st.markdown("---")
 st.markdown("""
 <div style="text-align: center; color: gray;">
     <p>📍 Click anywhere on the map → Compare Solar, Wind & Gas Turbine</p>
-    <p>Data: Solar GHI (kWh/m²/day), Wind Speed (m/s), Land Cost (₹/acre)</p>
-    <p><strong>Best Locations:</strong> Rajasthan (Solar), Gujarat/Kutch (Wind), Anywhere (Gas Turbine)</p>
+    <p>🗺️ Switch between Street, Terrain & Satellite views using the radio buttons above</p>
+    <p><strong>Best Locations:</strong> Rajasthan (Solar) | Gujarat/Kutch (Wind) | Anywhere (Gas Turbine)</p>
 </div>
 """, unsafe_allow_html=True)
